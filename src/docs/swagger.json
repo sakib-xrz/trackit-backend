@@ -1,0 +1,1810 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Track It API Documentation",
+    "version": "1.0.0"
+  },
+  "tags": [
+    { "name": "Health", "description": "Server health and status checks" },
+    { "name": "Authentication", "description": "User registration, authentication, guest sessions, and profile management" },
+    { "name": "Categories", "description": "Income and expense transaction categories" },
+    { "name": "Transactions", "description": "Recording, tracking, filtering, and budget synchronization for expenses and income" },
+    { "name": "Budgets", "description": "Monthly budget targets, real-time spending tracking, and limit alerts" },
+    { "name": "Bills & Subscriptions", "description": "Bill tracking, calendar, upcoming reminders, and recurring subscription detection (USER only)" },
+    { "name": "Expense Splits", "description": "Shared expense splitting, participant contributions, and settlements (USER only)" },
+    { "name": "Reports & Analytics", "description": "Financial dashboard summaries, category breakdowns, and daily spending heatmap" },
+    { "name": "Currency", "description": "Foreign exchange rates and real-time currency conversion (USER only)" }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Check if the Track It API backend is active, healthy, and operational.",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Track It Backend API is healthy and running!" },
+                    "timestamp": { "type": "string", "format": "date-time", "example": "2026-11-06T06:34:25.000Z" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new user account",
+        "description": "Register a full user account with hashed password and receive an access token.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 2, "example": "Sarah Connor" },
+                  "email": { "type": "string", "format": "email", "example": "sarah@example.com" },
+                  "password": { "type": "string", "minLength": 6, "example": "SecurePass123!" },
+                  "phone": { "type": "string", "example": "+15551234567" },
+                  "base_currency": { "type": "string", "maxLength": 10, "default": "USD", "example": "USD" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User successfully registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already exists",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Login user",
+        "description": "Authenticate an existing user with email and password to receive a JWT access token.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "sarah@example.com" },
+                  "password": { "type": "string", "example": "SecurePass123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User logged in successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid email or password",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/guest": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Create temporary Guest session",
+        "description": "Create an instant, anonymous guest account for quick evaluation without registration. Returns a valid JWT with role `GUEST`.",
+        "responses": {
+          "201": {
+            "description": "Guest session created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get current user profile",
+        "description": "Retrieve profile information of the currently authenticated user or guest.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "User profile retrieved successfully" },
+                    "data": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized / Missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Authentication"],
+        "summary": "Update user profile",
+        "description": "Update personal details such as display name, phone number, and default base currency.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "minLength": 2, "example": "Sarah Connor Updated" },
+                  "phone": { "type": "string", "example": "+15559876543" },
+                  "base_currency": { "type": "string", "maxLength": 10, "example": "MYR" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Profile updated successfully" },
+                    "data": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "tags": ["Categories"],
+        "summary": "Get categories",
+        "description": "List all default system categories plus custom categories created by the current user.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter categories by type",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["INCOME", "EXPENSE"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Categories retrieved successfully" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Category" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Categories"],
+        "summary": "Create a custom category",
+        "description": "Create a new custom category for the user.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "type"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 2, "example": "Pet Supplies" },
+                  "type": { "type": "string", "enum": ["INCOME", "EXPENSE"], "example": "EXPENSE" },
+                  "icon": { "type": "string", "default": "ic_default", "example": "ic_pets" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 201 },
+                    "message": { "type": "string", "example": "Category created successfully" },
+                    "data": { "$ref": "#/components/schemas/Category" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categories/{id}": {
+      "patch": {
+        "tags": ["Categories"],
+        "summary": "Update a custom category",
+        "description": "Update name, type, or icon of a custom category. System default categories cannot be modified.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Category UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "minLength": 2, "example": "Dog & Cat Supplies" },
+                  "type": { "type": "string", "enum": ["INCOME", "EXPENSE"], "example": "EXPENSE" },
+                  "icon": { "type": "string", "example": "ic_pets" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Category updated successfully" },
+                    "data": { "$ref": "#/components/schemas/Category" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Custom category not found or cannot modify system default category",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Categories"],
+        "summary": "Delete a custom category",
+        "description": "Delete a custom category owned by the user. System default categories cannot be deleted.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Category UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Category deleted successfully" },
+                    "data": { "type": "object", "nullable": true, "example": null }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Custom category not found or cannot delete system default category",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transactions": {
+      "get": {
+        "tags": ["Transactions"],
+        "summary": "Get paginated transactions",
+        "description": "Retrieve transactions with filtering by type, category, and date range, alongside pagination and sorting.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by transaction type",
+            "schema": { "type": "string", "enum": ["INCOME", "EXPENSE"] }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "description": "Filter by specific category UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "description": "Filter transactions on or after this ISO datetime",
+            "schema": { "type": "string", "format": "date-time", "example": "2026-11-01T00:00:00.000Z" }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "description": "Filter transactions on or before this ISO datetime",
+            "schema": { "type": "string", "format": "date-time", "example": "2026-11-30T23:59:59.999Z" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": { "type": "integer", "default": 1, "minimum": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of records per page",
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "Field to sort by",
+            "schema": { "type": "string", "default": "created_at", "example": "transaction_date" }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order direction",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transactions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Transactions retrieved successfully" },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Transaction" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Transactions"],
+        "summary": "Record a new transaction",
+        "description": "Add an income or expense transaction. When an EXPENSE is logged, the monthly budget's spent amount automatically recalculates.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["category_id", "type", "amount"],
+                "properties": {
+                  "category_id": { "type": "string", "format": "uuid", "example": "123e4567-e89b-12d3-a456-426614174000" },
+                  "type": { "type": "string", "enum": ["INCOME", "EXPENSE"], "example": "EXPENSE" },
+                  "amount": { "type": "number", "minimum": 0.01, "example": 45.50 },
+                  "currency": { "type": "string", "maxLength": 10, "default": "USD", "example": "USD" },
+                  "transaction_date": { "type": "string", "format": "date-time", "example": "2026-11-06T12:00:00.000Z" },
+                  "note": { "type": "string", "example": "Grocery shopping at supermarket" },
+                  "is_recurring": { "type": "boolean", "default": false, "example": false }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transaction recorded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 201 },
+                    "message": { "type": "string", "example": "Transaction recorded successfully" },
+                    "data": { "$ref": "#/components/schemas/Transaction" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Category not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transactions/{id}": {
+      "patch": {
+        "tags": ["Transactions"],
+        "summary": "Update an existing transaction",
+        "description": "Update transaction fields. Recalculates and synchronizes monthly budget spent metrics.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Transaction UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category_id": { "type": "string", "format": "uuid", "example": "123e4567-e89b-12d3-a456-426614174000" },
+                  "type": { "type": "string", "enum": ["INCOME", "EXPENSE"], "example": "EXPENSE" },
+                  "amount": { "type": "number", "minimum": 0.01, "example": 52.00 },
+                  "currency": { "type": "string", "maxLength": 10, "example": "USD" },
+                  "transaction_date": { "type": "string", "format": "date-time", "example": "2026-11-06T14:30:00.000Z" },
+                  "note": { "type": "string", "example": "Updated grocery total" },
+                  "is_recurring": { "type": "boolean", "example": false }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transaction updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Transaction updated successfully" },
+                    "data": { "$ref": "#/components/schemas/Transaction" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Transaction not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Transactions"],
+        "summary": "Delete a transaction",
+        "description": "Delete a transaction and re-sync the monthly budget's spent amount.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Transaction UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Transaction deleted successfully" },
+                    "data": { "type": "object", "nullable": true, "example": null }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Transaction not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/budgets": {
+      "post": {
+        "tags": ["Budgets"],
+        "summary": "Set or update monthly budget",
+        "description": "Set a monthly target budget for a given month in YYYY-MM format. Automatically computes spent amount from all expense transactions in that month.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["month", "amount"],
+                "properties": {
+                  "month": { "type": "string", "pattern": "^\\d{4}-\\d{2}$", "example": "2026-11" },
+                  "amount": { "type": "number", "minimum": 0.01, "example": 1500.00 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Monthly budget saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Monthly budget saved successfully" },
+                    "data": { "$ref": "#/components/schemas/Budget" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/budgets/report": {
+      "get": {
+        "tags": ["Budgets"],
+        "summary": "Get budget status report",
+        "description": "Returns budget status, total spent, remaining funds, percentage used, and exceed indicator for the specified month.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "description": "Month in YYYY-MM format (defaults to current month if omitted)",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}$", "example": "2026-11" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Budget report retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Budget report retrieved successfully" },
+                    "data": { "$ref": "#/components/schemas/BudgetReport" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bills": {
+      "get": {
+        "tags": ["Bills & Subscriptions"],
+        "summary": "Get bills and subscription calendar",
+        "description": "Retrieve user bills with optional filtering by payment status, subscription classification, and due month. (Registered USER only)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "is_paid",
+            "in": "query",
+            "description": "Filter by payment status",
+            "schema": { "type": "string", "enum": ["true", "false"] }
+          },
+          {
+            "name": "is_subscription",
+            "in": "query",
+            "description": "Filter for recurring subscriptions",
+            "schema": { "type": "string", "enum": ["true", "false"] }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "description": "Filter by due date month (YYYY-MM)",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}$", "example": "2026-11" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bills & subscription calendar retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Bills & subscription calendar retrieved successfully" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Bill" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Feature restricted to registered users)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Bills & Subscriptions"],
+        "summary": "Add a new bill or recurring subscription",
+        "description": "Create a bill entry with due date, recurrence interval, and reminder threshold. (Registered USER only)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "amount", "due_date"],
+                "properties": {
+                  "title": { "type": "string", "minLength": 2, "example": "Netflix Premium" },
+                  "amount": { "type": "number", "minimum": 0.01, "example": 19.99 },
+                  "due_date": { "type": "string", "format": "date-time", "example": "2026-11-20T00:00:00.000Z" },
+                  "repeat_interval": {
+                    "type": "string",
+                    "enum": ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"],
+                    "default": "MONTHLY",
+                    "example": "MONTHLY"
+                  },
+                  "is_subscription": { "type": "boolean", "default": false, "example": true },
+                  "reminder_days_left": { "type": "integer", "minimum": 0, "maximum": 30, "default": 3, "example": 3 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Bill/Subscription created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 201 },
+                    "message": { "type": "string", "example": "Bill/Subscription created successfully" },
+                    "data": { "$ref": "#/components/schemas/Bill" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Guests restricted)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bills/detect-subscriptions": {
+      "get": {
+        "tags": ["Bills & Subscriptions"],
+        "summary": "Detect recurring subscriptions",
+        "description": "Scans expense transactions to automatically identify repeated identical amounts or notes indicating hidden recurring subscriptions.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Potential recurring subscriptions detected successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Potential recurring subscriptions detected successfully" },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": { "type": "string", "example": "Spotify" },
+                          "amount": { "type": "number", "example": 10.99 },
+                          "currency": { "type": "string", "example": "USD" },
+                          "occurrences": { "type": "integer", "example": 3 },
+                          "last_transaction_date": { "type": "string", "format": "date-time" },
+                          "is_flagged_recurring": { "type": "boolean", "example": true }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bills/reminders": {
+      "get": {
+        "tags": ["Bills & Subscriptions"],
+        "summary": "Get upcoming bill reminders",
+        "description": "Returns unpaid bills due within the next 7 days along with computed alert text and countdown days.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Upcoming bill reminders retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Upcoming bill reminders retrieved successfully" },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          { "$ref": "#/components/schemas/Bill" },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "days_until_due": { "type": "integer", "example": 2 },
+                              "alert_message": { "type": "string", "example": "Your bill \"Electricity\" of 85.00 is due in 2 day(s)." }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bills/{id}": {
+      "patch": {
+        "tags": ["Bills & Subscriptions"],
+        "summary": "Update bill details",
+        "description": "Modify an existing bill's title, amount, due date, repetition, or status.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Bill UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string", "minLength": 2, "example": "Internet Fiber" },
+                  "amount": { "type": "number", "minimum": 0.01, "example": 55.00 },
+                  "due_date": { "type": "string", "format": "date-time" },
+                  "repeat_interval": { "type": "string", "enum": ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"] },
+                  "is_paid": { "type": "boolean", "example": true },
+                  "is_subscription": { "type": "boolean", "example": true },
+                  "reminder_days_left": { "type": "integer", "minimum": 0, "maximum": 30 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bill updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Bill updated successfully" },
+                    "data": { "$ref": "#/components/schemas/Bill" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bill not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Bills & Subscriptions"],
+        "summary": "Delete a bill",
+        "description": "Delete a bill or subscription record.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Bill UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bill deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Bill deleted successfully" },
+                    "data": { "type": "object", "nullable": true, "example": null }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bill not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bills/{id}/mark-paid": {
+      "patch": {
+        "tags": ["Bills & Subscriptions"],
+        "summary": "Mark a bill as paid",
+        "description": "Convenience endpoint to immediately mark a bill as settled and paid.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Bill UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bill marked as paid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Bill marked as paid" },
+                    "data": { "$ref": "#/components/schemas/Bill" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bill not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expense-splits": {
+      "get": {
+        "tags": ["Expense Splits"],
+        "summary": "Get shared expense splits",
+        "description": "Retrieve all shared expense splits created by the user, including participant details and settlement status.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Shared expense splits retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Shared expense splits retrieved successfully" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ExpenseSplit" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Guests restricted)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Expense Splits"],
+        "summary": "Create a shared expense split",
+        "description": "Record a bill split with friends or colleagues with individual participant shares.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "total_amount", "participants"],
+                "properties": {
+                  "title": { "type": "string", "minLength": 2, "example": "Dinner with Team" },
+                  "total_amount": { "type": "number", "minimum": 0.01, "example": 120.00 },
+                  "currency": { "type": "string", "maxLength": 10, "default": "USD", "example": "USD" },
+                  "note": { "type": "string", "example": "Italian Bistro dinner celebration" },
+                  "participants": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "required": ["participant_name", "share_amount"],
+                      "properties": {
+                        "user_id": { "type": "string", "format": "uuid" },
+                        "participant_name": { "type": "string", "example": "Alex Wong" },
+                        "participant_email": { "type": "string", "format": "email", "example": "alex@example.com" },
+                        "share_amount": { "type": "number", "minimum": 0.01, "example": 40.00 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shared expense split created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 201 },
+                    "message": { "type": "string", "example": "Shared expense split created successfully" },
+                    "data": { "$ref": "#/components/schemas/ExpenseSplit" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expense-splits/{id}/participants": {
+      "post": {
+        "tags": ["Expense Splits"],
+        "summary": "Add participant to an existing split",
+        "description": "Add an additional participant and their share amount to an existing expense split.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Expense Split UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["participant_name", "share_amount"],
+                "properties": {
+                  "user_id": { "type": "string", "format": "uuid" },
+                  "participant_name": { "type": "string", "example": "David Miller" },
+                  "participant_email": { "type": "string", "format": "email", "example": "david@example.com" },
+                  "share_amount": { "type": "number", "minimum": 0.01, "example": 40.00 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Participant added to split successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 201 },
+                    "message": { "type": "string", "example": "Participant added to split successfully" },
+                    "data": { "$ref": "#/components/schemas/ExpenseSplitParticipant" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Expense split record not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expense-splits/{id}/participants/{participantId}/settle": {
+      "patch": {
+        "tags": ["Expense Splits"],
+        "summary": "Settle a participant's individual share",
+        "description": "Mark an individual participant's share as settled. If all participants have settled, the whole split automatically marks as settled.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Expense Split UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "participantId",
+            "in": "path",
+            "required": true,
+            "description": "Participant record UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Participant share settled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Participant share settled successfully" },
+                    "data": { "$ref": "#/components/schemas/ExpenseSplitParticipant" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Expense split record or participant not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expense-splits/{id}/settle-up": {
+      "patch": {
+        "tags": ["Expense Splits"],
+        "summary": "Settle entire expense split",
+        "description": "Mark all participants and the entire split record as fully settled.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Expense Split UUID",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entire expense split settled up successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Entire expense split settled up successfully" },
+                    "data": { "$ref": "#/components/schemas/ExpenseSplit" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Expense split record not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/dashboard": {
+      "get": {
+        "tags": ["Reports & Analytics"],
+        "summary": "Get financial dashboard summary",
+        "description": "Calculates monthly total income, total expense, net balance, budget details, and category breakdown for visualization.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "description": "Month in YYYY-MM format (defaults to current month)",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}$", "example": "2026-11" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard financial report retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Dashboard financial report retrieved successfully" },
+                    "data": { "$ref": "#/components/schemas/DashboardSummary" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/spending-heatmap": {
+      "get": {
+        "tags": ["Reports & Analytics"],
+        "summary": "Get monthly spending heatmap",
+        "description": "Generates day-by-day spending metrics and normalized intensity levels (0 = No Spend, 1 = Low, 2 = Medium, 3 = High, 4 = Peak) for GitHub-style calendar heatmaps.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "description": "Month in YYYY-MM format (defaults to current month)",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}$", "example": "2026-11" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spending heatmap retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Spending heatmap retrieved successfully" },
+                    "data": { "$ref": "#/components/schemas/SpendingHeatmap" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/currency/rates": {
+      "get": {
+        "tags": ["Currency"],
+        "summary": "Get latest exchange rates",
+        "description": "Fetch real-time currency exchange rates relative to a given base currency with automatic fallback cache.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "base",
+            "in": "query",
+            "description": "Base currency code (e.g. USD, EUR, MYR, BDT)",
+            "schema": { "type": "string", "default": "USD", "example": "USD" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exchange rates retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Exchange rates retrieved successfully" },
+                    "data": { "$ref": "#/components/schemas/ExchangeRates" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Guests restricted)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/currency/convert": {
+      "get": {
+        "tags": ["Currency"],
+        "summary": "Convert currency amount",
+        "description": "Convert a monetary amount from one currency to another using current exchange rates.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "description": "Source currency code",
+            "schema": { "type": "string", "default": "USD", "example": "USD" }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "description": "Target currency code",
+            "schema": { "type": "string", "default": "MYR", "example": "MYR" }
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "description": "Amount to convert",
+            "schema": { "type": "number", "minimum": 0, "default": 100, "example": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Currency converted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "status_code": { "type": "integer", "example": 200 },
+                    "message": { "type": "string", "example": "Currency converted successfully" },
+                    "data": { "$ref": "#/components/schemas/CurrencyConversion" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid amount or unsupported currency",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT token obtained from `/api/auth/login`, `/api/auth/register`, or `/api/auth/guest`."
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d" },
+          "name": { "type": "string", "example": "Sarah Connor" },
+          "email": { "type": "string", "format": "email", "example": "sarah@example.com" },
+          "phone": { "type": "string", "nullable": true, "example": "+15551234567" },
+          "role": { "type": "string", "enum": ["USER", "GUEST"], "example": "USER" },
+          "base_currency": { "type": "string", "example": "USD" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "status_code": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "User authenticated successfully" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": { "$ref": "#/components/schemas/User" },
+              "access_token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+            }
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "e4f5g6h7-i8j9-0k1l-2m3n-4o5p6q7r8s9t" },
+          "user_id": { "type": "string", "format": "uuid", "nullable": true, "example": null },
+          "name": { "type": "string", "example": "Food & Dining" },
+          "type": { "type": "string", "enum": ["INCOME", "EXPENSE"], "example": "EXPENSE" },
+          "icon": { "type": "string", "example": "ic_restaurant" },
+          "is_default": { "type": "boolean", "example": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "c7d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f" },
+          "user_id": { "type": "string", "format": "uuid", "example": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d" },
+          "category_id": { "type": "string", "format": "uuid", "example": "e4f5g6h7-i8j9-0k1l-2m3n-4o5p6q7r8s9t" },
+          "type": { "type": "string", "enum": ["INCOME", "EXPENSE"], "example": "EXPENSE" },
+          "amount": { "type": "number", "example": 45.50 },
+          "currency": { "type": "string", "example": "USD" },
+          "transaction_date": { "type": "string", "format": "date-time" },
+          "note": { "type": "string", "nullable": true, "example": "Dinner at diner" },
+          "is_recurring": { "type": "boolean", "example": false },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "category": { "$ref": "#/components/schemas/Category" }
+        }
+      },
+      "Budget": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "b1b2b3b4-b5b6-b7b8-b9b0-b1b2b3b4b5b6" },
+          "user_id": { "type": "string", "format": "uuid", "example": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d" },
+          "month": { "type": "string", "example": "2026-11" },
+          "amount": { "type": "number", "example": 1500.00 },
+          "spent": { "type": "number", "example": 680.50 },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BudgetReport": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "nullable": true, "example": "b1b2b3b4-b5b6-b7b8-b9b0-b1b2b3b4b5b6" },
+          "month": { "type": "string", "example": "2026-11" },
+          "budget_set": { "type": "boolean", "example": true },
+          "amount": { "type": "number", "example": 1500.00 },
+          "spent": { "type": "number", "example": 680.50 },
+          "remaining": { "type": "number", "example": 819.50 },
+          "usage_percentage": { "type": "number", "example": 45.37 },
+          "is_exceeded": { "type": "boolean", "example": false }
+        }
+      },
+      "Bill": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "f1f2f3f4-f5f6-f7f8-f9f0-f1f2f3f4f5f6" },
+          "user_id": { "type": "string", "format": "uuid", "example": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d" },
+          "title": { "type": "string", "example": "Netflix Subscription" },
+          "amount": { "type": "number", "example": 19.99 },
+          "due_date": { "type": "string", "format": "date-time" },
+          "repeat_interval": { "type": "string", "enum": ["NONE", "DAILY", "WEEKLY", "MONTHLY", "YEARLY"], "example": "MONTHLY" },
+          "is_paid": { "type": "boolean", "example": false },
+          "is_subscription": { "type": "boolean", "example": true },
+          "reminder_days_left": { "type": "integer", "example": 3 },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ExpenseSplit": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "s1s2s3s4-s5s6-s7s8-s9s0-s1s2s3s4s5s6" },
+          "creator_id": { "type": "string", "format": "uuid", "example": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d" },
+          "title": { "type": "string", "example": "Road Trip Gas & Snacks" },
+          "total_amount": { "type": "number", "example": 120.00 },
+          "currency": { "type": "string", "example": "USD" },
+          "note": { "type": "string", "nullable": true, "example": "Trip expenses" },
+          "is_settled": { "type": "boolean", "example": false },
+          "created_date": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "participants": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ExpenseSplitParticipant" }
+          }
+        }
+      },
+      "ExpenseSplitParticipant": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "p1p2p3p4-p5p6-p7p8-p9p0-p1p2p3p4p5p6" },
+          "split_id": { "type": "string", "format": "uuid", "example": "s1s2s3s4-s5s6-s7s8-s9s0-s1s2s3s4s5s6" },
+          "user_id": { "type": "string", "format": "uuid", "nullable": true, "example": null },
+          "participant_name": { "type": "string", "example": "Alex Wong" },
+          "participant_email": { "type": "string", "format": "email", "nullable": true, "example": "alex@example.com" },
+          "share_amount": { "type": "number", "example": 40.00 },
+          "is_settled": { "type": "boolean", "example": false },
+          "settled_at": { "type": "string", "format": "date-time", "nullable": true, "example": null },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DashboardSummary": {
+        "type": "object",
+        "properties": {
+          "month": { "type": "string", "example": "2026-11" },
+          "total_income": { "type": "number", "example": 4500.00 },
+          "total_expense": { "type": "number", "example": 1650.00 },
+          "net_balance": { "type": "number", "example": 2850.00 },
+          "budget": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "amount": { "type": "number", "example": 2000.00 },
+              "spent": { "type": "number", "example": 1650.00 },
+              "remaining": { "type": "number", "example": 350.00 }
+            }
+          },
+          "expense_by_category": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category_id": { "type": "string", "format": "uuid" },
+                "category_name": { "type": "string", "example": "Food & Dining" },
+                "icon": { "type": "string", "example": "ic_restaurant" },
+                "total_amount": { "type": "number", "example": 650.00 }
+              }
+            }
+          }
+        }
+      },
+      "SpendingHeatmap": {
+        "type": "object",
+        "properties": {
+          "month": { "type": "string", "example": "2026-11" },
+          "max_daily_spent": { "type": "number", "example": 120.00 },
+          "heatmap": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": { "type": "string", "example": "2026-11-01" },
+                "total_spent": { "type": "number", "example": 45.00 },
+                "transaction_count": { "type": "integer", "example": 2 },
+                "intensity_level": { "type": "integer", "enum": [0, 1, 2, 3, 4], "example": 2 }
+              }
+            }
+          }
+        }
+      },
+      "ExchangeRates": {
+        "type": "object",
+        "properties": {
+          "base_currency": { "type": "string", "example": "USD" },
+          "source": { "type": "string", "example": "live_api" },
+          "rates": {
+            "type": "object",
+            "additionalProperties": { "type": "number" },
+            "example": {
+              "EUR": 0.92,
+              "GBP": 0.79,
+              "MYR": 4.45,
+              "BDT": 120.0,
+              "INR": 84.0,
+              "JPY": 152.5
+            }
+          }
+        }
+      },
+      "CurrencyConversion": {
+        "type": "object",
+        "properties": {
+          "from_currency": { "type": "string", "example": "USD" },
+          "to_currency": { "type": "string", "example": "MYR" },
+          "original_amount": { "type": "number", "example": 100 },
+          "exchange_rate": { "type": "number", "example": 4.45 },
+          "converted_amount": { "type": "number", "example": 445.00 },
+          "rate_source": { "type": "string", "example": "live_api" }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "example": 1 },
+          "limit": { "type": "integer", "example": 10 },
+          "total": { "type": "integer", "example": 42 },
+          "total_pages": { "type": "integer", "example": 5 }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "status_code": { "type": "integer", "example": 400 },
+          "message": { "type": "string", "example": "Validation Error" },
+          "error_messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "example": "email" },
+                "message": { "type": "string", "example": "Invalid email address" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

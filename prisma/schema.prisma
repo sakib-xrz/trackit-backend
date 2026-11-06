@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum RepeatInterval {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum UserRole {
+  USER
+  GUEST
+}
+
+model User {
+  id            String   @id @default(uuid()) @map("id")
+  name          String   @map("name") @db.VarChar(120)
+  email         String   @unique @map("email") @db.VarChar(160)
+  password_hash String   @map("password_hash")
+  phone         String?  @map("phone") @db.VarChar(30)
+  role          UserRole @default(USER) @map("role")
+  base_currency String   @default("USD") @map("base_currency") @db.VarChar(10)
+  created_at    DateTime @default(now()) @map("created_at")
+  updated_at    DateTime @updatedAt @map("updated_at")
+
+  categories         Category[]
+  transactions       Transaction[]
+  budgets            Budget[]
+  bills              Bill[]
+  created_splits     ExpenseSplit[]            @relation("SplitCreator")
+  split_participants ExpenseSplitParticipant[]
+
+  @@index([email, role])
+  @@index([created_at])
+  @@map("users")
+}
+
+model Category {
+  id         String          @id @default(uuid()) @map("id")
+  user_id    String?         @map("user_id")
+  name       String          @map("name") @db.VarChar(100)
+  type       TransactionType @map("type")
+  icon       String          @default("default_icon") @map("icon") @db.VarChar(80)
+  is_default Boolean         @default(false) @map("is_default")
+  created_at DateTime        @default(now()) @map("created_at")
+  updated_at DateTime        @updatedAt @map("updated_at")
+
+  user         User?         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([user_id, type])
+  @@index([is_default, type])
+  @@map("categories")
+}
+
+model Transaction {
+  id               String          @id @default(uuid()) @map("id")
+  user_id          String          @map("user_id")
+  category_id      String          @map("category_id")
+  type             TransactionType @map("type")
+  amount           Decimal         @map("amount") @db.Decimal(12, 2)
+  currency         String          @default("USD") @map("currency") @db.VarChar(10)
+  transaction_date DateTime        @default(now()) @map("transaction_date")
+  note             String?         @map("note") @db.Text
+  is_recurring     Boolean         @default(false) @map("is_recurring")
+  created_at       DateTime        @default(now()) @map("created_at")
+  updated_at       DateTime        @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [category_id], references: [id], onDelete: Restrict)
+
+  @@index([user_id, transaction_date])
+  @@index([user_id, type, transaction_date])
+  @@index([user_id, category_id])
+  @@map("transactions")
+}
+
+model Budget {
+  id         String   @id @default(uuid()) @map("id")
+  user_id    String   @map("user_id")
+  month      String   @map("month") @db.VarChar(7) // Format: YYYY-MM
+  amount     Decimal  @map("amount") @db.Decimal(12, 2)
+  spent      Decimal  @default(0.00) @map("spent") @db.Decimal(12, 2)
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, month])
+  @@index([user_id, month])
+  @@map("budgets")
+}
+
+model Bill {
+  id                 String         @id @default(uuid()) @map("id")
+  user_id            String         @map("user_id")
+  title              String         @map("title") @db.VarChar(150)
+  amount             Decimal        @map("amount") @db.Decimal(12, 2)
+  due_date           DateTime       @map("due_date")
+  repeat_interval    RepeatInterval @default(MONTHLY) @map("repeat_interval")
+  is_paid            Boolean        @default(false) @map("is_paid")
+  is_subscription    Boolean        @default(false) @map("is_subscription")
+  reminder_days_left Int            @default(3) @map("reminder_days_left")
+  created_at         DateTime       @default(now()) @map("created_at")
+  updated_at         DateTime       @updatedAt @map("updated_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, due_date, is_paid])
+  @@index([user_id, is_subscription])
+  @@map("bills")
+}
+
+model ExpenseSplit {
+  id           String   @id @default(uuid()) @map("id")
+  creator_id   String   @map("creator_id")
+  title        String   @map("title") @db.VarChar(150)
+  total_amount Decimal  @map("total_amount") @db.Decimal(12, 2)
+  currency     String   @default("USD") @map("currency") @db.VarChar(10)
+  note         String?  @map("note") @db.Text
+  is_settled   Boolean  @default(false) @map("is_settled")
+  created_date DateTime @default(now()) @map("created_date")
+  updated_at   DateTime @updatedAt @map("updated_at")
+
+  creator      User                      @relation("SplitCreator", fields: [creator_id], references: [id], onDelete: Cascade)
+  participants ExpenseSplitParticipant[]
+
+  @@index([creator_id, is_settled])
+  @@index([creator_id, created_date])
+  @@map("expense_splits")
+}
+
+model ExpenseSplitParticipant {
+  id                String    @id @default(uuid()) @map("id")
+  split_id          String    @map("split_id")
+  user_id           String?   @map("user_id")
+  participant_name  String    @map("participant_name") @db.VarChar(120)
+  participant_email String?   @map("participant_email") @db.VarChar(160)
+  share_amount      Decimal   @map("share_amount") @db.Decimal(12, 2)
+  is_settled        Boolean   @default(false) @map("is_settled")
+  settled_at        DateTime? @map("settled_at")
+  created_at        DateTime  @default(now()) @map("created_at")
+  updated_at        DateTime  @updatedAt @map("updated_at")
+
+  expense_split ExpenseSplit @relation(fields: [split_id], references: [id], onDelete: Cascade)
+  user          User?        @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([split_id, is_settled])
+  @@index([user_id, is_settled])
+  @@map("expense_split_participants")
+}
